@@ -1,7 +1,7 @@
 # W3Box
 
 ## Introduction
-W3Box is a public file hosting service based on the Web3Q chain. Anyone can upload public files without permission, and only the uploader can delete uploaded files.
+W3Box is a public file hosting service based on the ETHStorage chain. Anyone can upload public files without permission, and only the uploader can delete uploaded files.
 
 W3Box can be visited here: [https://web3q.io/w3box.w3q/](https://web3q.io/w3box.w3q/#/).
 <br/>

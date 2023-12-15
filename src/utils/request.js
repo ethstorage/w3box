@@ -3,12 +3,13 @@ const sha3 = require('js-sha3').keccak_256;
 
 const FileContractInfo = {
   abi: [
-    "function writeChunk(bytes memory name, bytes memory fileType, uint256 chunkId, bytes calldata data) public payable",
+    "function writeChunk(bytes memory name, uint256 chunkId, bytes calldata data) public payable",
+    // "function writeChunk(bytes memory name, bytes memory fileType, uint256 chunkId, bytes calldata data) public payable",
     "function remove(bytes memory name) external returns (uint256)",
     "function removes(bytes[] memory names) public",
     "function countChunks(bytes memory name) external view returns (uint256)",
     "function getChunkHash(bytes memory name, uint256 chunkId) public view returns (bytes32)",
-    "function getAuthorFiles(address author) public view returns (uint256[] memory times,bytes[] memory names,bytes[] memory types,string[] memory urls)"
+    "function getAuthorFiles(address author) public view returns (uint256[] memory ids,uint256[] memory times,bytes[] memory names,string[] memory urls)"
   ],
 };
 
@@ -61,7 +62,8 @@ const clearOldFile = async (fileContract, chunkSize, hexName) => {
 export const request = async ({
   chunkLength,
   account,
-  contractAddress,
+  contract,
+  fileContractAddress,
   dirPath,
   file,
   onSuccess,
@@ -73,6 +75,7 @@ export const request = async ({
   // file name
   const name = dirPath + rawFile.name;
   const hexName = stringToHex(name);
+  console.log(hexName)
   const hexType = stringToHex(rawFile.type);
   // Data need to be sliced if file > 475K
   let fileSize = rawFile.size;
@@ -85,7 +88,7 @@ export const request = async ({
     chunks.push(content);
   }
 
-  const fileContract = FileContract(contractAddress);
+  const fileContract = FileContract(contract);
   const clear = await clearOldFile(fileContract, chunks.length, hexName, hexType)
   if (!clear) {
     onError(new Error("Check Old File Fail!"));
@@ -119,8 +122,8 @@ export const request = async ({
         break;
       }
 
-      const tx = await fileContract.writeChunk(hexName, hexType, index, hexData, {
-        value: ethers.utils.parseEther(cost.toString())
+      const tx = await fileContract.writeChunk(hexName, index, hexData, {
+        value: ethers.utils.parseEther(cost.toString()),
       });
       console.log(`Transaction Id: ${tx.hash}`);
       const receipt = await tx.wait();
@@ -130,12 +133,15 @@ export const request = async ({
       }
       onProgress({ percent: Number(index) + 1});
     } catch (e) {
+      console.log(e)
       uploadState = false;
       break;
     }
+    // TODO only one
+    break;
   }
   if (uploadState) {
-    const url = "https://galileo.web3q.io/file.w3q/" + account + "/" + name;
+    const url = "https://" + fileContractAddress + ".sep.w3link.io/" +account + "/" + name;
     onSuccess({ path: url});
   } else {
     if (notEnoughBalance) {

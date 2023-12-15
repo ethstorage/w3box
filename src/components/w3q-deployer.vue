@@ -34,6 +34,10 @@ export default {
       type: String,
       default: ""
     },
+    contract: {
+      type: String,
+      default: ""
+    },
     fileContract: {
       type: String,
       default: ""
@@ -72,7 +76,7 @@ export default {
   },
   computed: {
     enable() {
-      return this.fileContract !== null;
+      return this.contract !== null;
     },
     chunkLength() {
       return (window.ethereum && window.ethereum.isTrust)
@@ -150,7 +154,8 @@ export default {
       this.reqs[uid] = {
         chunkLength: this.chunkLength,
         account: this.account,
-        contractAddress: this.fileContract,
+        contract: this.contract,
+        fileContractAddress: this.fileContract,
         dirPath: this.dirPath,
         file: file,
         onSuccess: this.handleSuccess.bind(this, file),

@@ -4,7 +4,7 @@
     <el-card v-else class="profile-card">
       <div style="display: flex; flex-direction: row; justify-content: space-between; align-items: center">
         <div class="profile-title">
-          Files
+          IP Assets
         </div>
         <el-button v-if="this.result&&this.result.length>0&&!isDelete" round class="profile-delete" @click="openDelete">
           Delete multiple
@@ -27,20 +27,45 @@
       <!--   data   -->
       <div v-else class="profile-date">
         <div class="list-item" v-for="(item) in this.result" :key="item.url">
-          <div style="display:flex; flex-direction: row; align-items: center">
+          <div class="file-item">
             <input v-if="isDelete" style="padding: 15px; margin-right: 15px" :id="item.url" :value="item" type="checkbox" v-model="checkedDeletes"/>
             <template>
               <img v-if="isImage(renderName(item.type))" class="go-upload-list-item-img" :src="item.url" alt="">
               <update-icon v-else class="go-upload-list-item-img" name="file"/>
             </template>
-            <div class="go-upload-list-item-name">
-              <a :href="item.url" target="_blank">
-                {{ renderName(item.name) }}
-              </a>
+            <div style="display:flex;flex-direction: column;justify-content: space-between;align-items: flex-start; margin-left: 15px">
+              <div>
+                <span class="go-upload-list-item-title">ID: </span>
+                <span class="go-upload-list-item-message">
+                  <a :href="idUrl(item.id)" target="_blank">{{ item.id }}</a>
+                </span>
+              </div>
+              <div>
+                <span class="go-upload-list-item-title">Name: </span>
+                <span class="go-upload-list-item-message">{{ renderName(item.name) }}</span>
+              </div>
+              <div>
+                <span class="go-upload-list-item-title">Type: </span>
+                <span class="go-upload-list-item-message">0</span>
+              </div>
+              <div>
+                <span class="go-upload-list-item-title">ipOrg: </span>
+                <span class="go-upload-list-item-message">
+                  <a :href="storyUrl" target="_blank">{{ stringShort(storyContract) }}</a>
+                </span>
+              </div>
+              <div>
+                <span class="go-upload-list-item-title">Media: </span>
+                <span class="go-upload-list-item-message">
+                  <a :href="item.url" target="_blank">{{ stringShort(item.url) }}</a>
+                </span>
+              </div>
+              <div>
+                <span class="go-upload-list-item-title">Create Time: </span>
+                <span class="go-upload-list-item-message">{{ renderTimestamp(item.time) }}</span>
+              </div>
             </div>
           </div>
-
-          <span class="go-upload-list-item-time">{{ renderTimestamp(item.time) }}</span>
 
           <div>
             <span class="go-upload-list-item-delete" @click="onCopy(item.url)">
@@ -82,6 +107,15 @@ export default {
     chainConfig() {
       return this.$store.state.chainConfig;
     },
+    storyContract() {
+      if (this.chainConfig) {
+        return this.chainConfig.StoryContract;
+      }
+      return null;
+    },
+    storyUrl() {
+      return "https://sepolia.etherscan.io/address/" + this.storyContract;
+    },
   },
   watch: {
     chainConfig: function () {
@@ -94,6 +128,22 @@ export default {
     this.onSearch();
   },
   methods: {
+    idUrl(id) {
+      return "https://sepolia.etherscan.io/token/" + this.storyContract + "?a="+id;
+    },
+    stringShort(str) {
+      if (str.length < 20) {
+        return str;
+      }
+      return (
+          str.substring(0, 12) +
+          "..." +
+          str.substring(
+              str.length - 8,
+              str.length
+          )
+      );
+    },
     renderTimestamp(ts) {
       if (!ts) {
         return "";
@@ -319,15 +369,20 @@ export default {
   border: 1px solid rgba(35,46,63,.4);
 }
 .go-upload-list-item-img {
-  width: 80px;
-  height: 80px;
+  width: 120px;
+  height: 120px;
 }
-.go-upload-list-item-name {
-  font-size: 19px;
+.go-upload-list-item-title {
+  font-size: 16px;
   font-weight: bold;
-  margin-left: 25px;
-  width: 190px;
   text-align: left;
+  line-height: 30px;
+}
+.go-upload-list-item-message {
+  font-size: 14px;
+  font-weight: normal;
+  text-align: left;
+  line-height: 30px;
 }
 .go-upload-list-item-delete {
   font-size: 20px;
@@ -348,6 +403,12 @@ export default {
   }
 }
 
+.file-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: center;
+}
 @media screen and (max-width: 500px) {
   .profile-card {
     padding: 0;
@@ -380,14 +441,6 @@ export default {
   .go-upload-list-item-img {
     width: 30px;
     height: 30px;
-  }
-  .go-upload-list-item-name {
-    font-size: 10px;
-    margin-left: 5px;
-    width: 80px;
-  }
-  .go-upload-list-item-time {
-    font-size: 10px;
   }
   .go-upload-list-item-delete {
     font-size: 16px;

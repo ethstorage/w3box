@@ -11,7 +11,7 @@
       <div class="account">
         {{ this.accountShort }}
         &nbsp;|&nbsp;
-        {{ this.networkId === 3334 ? "Galileo Testnet": "Mainnet" }}
+        {{ this.networkId === 3334 ? "Galileo Testnet": "Sepolia" }}
       </div>
       <div class="favorite" @click.stop="goProfile"/>
     </div>
@@ -28,10 +28,8 @@ export class UnsupportedChainIdError extends Error {
   }
 }
 
-const chain = 3334;
+const chain = 11155111;
 const chainID = `0x${chain.toString(16)}`;
-const nodes = ['https://galileo.web3q.io:8545']
-const explorers = [`https://explorer.galileo.web3q.io/`];
 
 export default {
   name: "Wallet",
@@ -62,7 +60,7 @@ export default {
     ...mapActions(["setChainConfig", "setAccount"]),
     connectWallet() {
       if (!window.ethereum) {
-        this.$message.error('Can\'t setup the Web3Q network on metamask because window.ethereum is undefined');
+        this.$message.error('Can\'t setup the EthStorage network on metamask because window.ethereum is undefined');
         return;
       }
       this.login();
@@ -117,6 +115,7 @@ export default {
           .request({ method: "eth_requestAccounts" })
           .then(this.handleAccountsChanged)
           .catch(async (error) => {
+            console.log(error)
             if (error.code === 4001) {
               this.$message.error('User rejected');
             } else if (error instanceof UnsupportedChainIdError) {
@@ -134,20 +133,8 @@ export default {
       if (provider) {
         try {
           await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: chainID,
-                chainName: 'Web3Q Galileo',
-                nativeCurrency: {
-                  name: 'W3Q',
-                  symbol: 'W3Q',
-                  decimals: 18,
-                },
-                rpcUrls: nodes,
-                blockExplorerUrls: explorers,
-              },
-            ],
+            method: 'wallet_switchEthereumChain',
+            params: [{chainId: chainID}],
           })
           const newChainId = await window.ethereum.request({method: "eth_chainId"});
           if (chainID !== newChainId) {
@@ -160,7 +147,7 @@ export default {
           return false
         }
       } else {
-        this.$message.error('Can\'t setup the Web3Q network on metamask because window.ethereum is undefined');
+        this.$message.error('Can\'t setup the EthStorage network on metamask because window.ethereum is undefined');
         return false
       }
     },
