@@ -4377,6 +4377,19 @@ ethers@^5.5.4:
     "@ethersproject/web" "5.5.1"
     "@ethersproject/wordlists" "5.5.0"
 
+ethfs-uploader@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.npmmirror.com/ethfs-uploader/-/ethfs-uploader-1.0.0.tgz#82a743cf37d207f1c29ab9f42b3fd8ef3de885ed"
+  integrity sha512-8zSkuAM8YLmr9wf6ApNtN8SUCcJVYOUE3fU829rxy+r8ndLK3t6U7bfR7cZwMm5NbV1ONv2MjIlbHyy7AIWOhg==
+  dependencies:
+    colors-cli "^1.0.28"
+    eth-ens-namehash "^2.0.8"
+    ethers "^5.5.4"
+    fs "^0.0.1-security"
+    js-sha3 "^0.8.0"
+    minimist "^1.2.5"
+    rxjs "^7.5.5"
+
 ethjs-unit@0.1.6:
   version "0.1.6"
   resolved "https://registry.npmjs.org/ethjs-unit/-/ethjs-unit-0.1.6.tgz"
@@ -9678,19 +9691,6 @@ vuex@^3.4.0:
   version "3.6.2"
   resolved "https://registry.npmjs.org/vuex/-/vuex-3.6.2.tgz"
   integrity sha512-ETW44IqCgBpVomy520DT5jf8n0zoCac+sxWnn+hMe/CzaSejb/eVw2YToiXYX+Ex/AuHHia28vWTq4goAexFbw==
-
-w3q-deployer@^1.4.3:
-  version "1.4.3"
-  resolved "https://registry.npmjs.org/w3q-deployer/-/w3q-deployer-1.4.3.tgz#48026cea4fb00e65f1b03f88913c09e57f204fec"
-  integrity sha512-BC1xH5Av3EeBOzmVTXqhWJz8wW/4aOSmtCGiGMB86PeD+M4TgFzFcShWEiF5fHSNOGZV8LJszVDMsEDK6sRMQA==
-  dependencies:
-    colors-cli "^1.0.28"
-    eth-ens-namehash "^2.0.8"
-    ethers "^5.5.4"
-    fs "^0.0.1-security"
-    js-sha3 "^0.8.0"
-    minimist "^1.2.5"
-    rxjs "^7.5.5"
 
 watchpack-chokidar2@^2.0.1:
   version "2.0.1"

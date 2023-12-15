@@ -40,7 +40,7 @@
             </div>
           </div>
 
-          <span>{{ renderTimestamp(item.time) }}</span>
+          <span class="go-upload-list-item-time">{{ renderTimestamp(item.time) }}</span>
 
           <div>
             <span class="go-upload-list-item-delete" @click="onCopy(item.url)">
@@ -348,7 +348,7 @@ export default {
   }
 }
 
-@media screen and (max-width: 420px) {
+@media screen and (max-width: 500px) {
   .profile-card {
     padding: 0;
     margin-top: 5px;
@@ -356,6 +356,45 @@ export default {
 
   .profile-date {
     justify-content: center;
+  }
+
+  .divider {
+    width: 100%;
+    margin: 15px 0;
+  }
+
+  .profile-empty {
+    height: 80%;
+  }
+
+  .profile-delete {
+    font-size: 14px;
+  }
+  .profile-delete-btn {
+    font-size: 14px;
+  }
+
+  .list-item {
+    padding: 15px 8px;
+  }
+  .go-upload-list-item-img {
+    width: 30px;
+    height: 30px;
+  }
+  .go-upload-list-item-name {
+    font-size: 10px;
+    margin-left: 5px;
+    width: 80px;
+  }
+  .go-upload-list-item-time {
+    font-size: 10px;
+  }
+  .go-upload-list-item-delete {
+    font-size: 16px;
+    width: 25px;
+    height: 25px;
+    cursor: pointer;
+    padding: 10px;
   }
 }
 </style>

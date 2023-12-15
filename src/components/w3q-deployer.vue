@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import request from '@/utils/request';
+import {NotEnoughBalance, request} from '@/utils/request';
 import UploadList from './upload-list';
 import UploadDragger from './upload-dragger';
 const copy = require('clipboard-copy')
@@ -30,6 +30,10 @@ export default {
   name: 'w3q-deployer',
   components: { UploadDragger, UploadList },
   props: {
+    account: {
+      type: String,
+      default: ""
+    },
     fileContract: {
       type: String,
       default: ""
@@ -69,6 +73,10 @@ export default {
   computed: {
     enable() {
       return this.fileContract !== null;
+    },
+    chunkLength() {
+      return (window.ethereum && window.ethereum.isTrust)
+          ? 24 * 1024 : 475 * 1024;
     }
   },
   methods: {
@@ -120,8 +128,8 @@ export default {
     },
     normalizeFiles (rawFile) {
       let chunkSize = 1;
-      if (rawFile.size > 475 * 1024) {
-        chunkSize = Math.ceil(rawFile.size / (475 * 1024));
+      if (rawFile.size > this.chunkLength) {
+        chunkSize = Math.ceil(rawFile.size / this.chunkLength);
       }
       const file = {
         name: rawFile.name,
@@ -140,6 +148,8 @@ export default {
     normalizeReq (file) {
       const { uid } = file;
       this.reqs[uid] = {
+        chunkLength: this.chunkLength,
+        account: this.account,
         contractAddress: this.fileContract,
         dirPath: this.dirPath,
         file: file,
@@ -181,6 +191,12 @@ export default {
       delete this.reqs[uid];
       file.status = 'failure';
       this.onError(error, file, this.files);
+      if (error instanceof NotEnoughBalance) {
+        this.$notify.error({
+          title: 'Not enough balance!',
+          message: 'File >=24kb requires staking token.'
+        });
+      }
     },
     handleSuccess(file, response) {
       const { uid } = file;

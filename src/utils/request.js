@@ -58,7 +58,9 @@ const clearOldFile = async (fileContract, chunkSize, hexName) => {
   return true;
 }
 
-const request = async ({
+export const request = async ({
+  chunkLength,
+  account,
   contractAddress,
   dirPath,
   file,
@@ -66,23 +68,6 @@ const request = async ({
   onError,
   onProgress
 }) => {
-  if (!window.ethereum) {
-    onError(new Error("Can't find metamask"));
-    return;
-  }
-  let account;
-  try {
-    account = await window.ethereum.enable();
-    if (!account) {
-      onError(new Error("Can't get Account"));
-      return;
-    }
-  } catch (e) {
-    onError(new Error("Can't get Account"));
-    return;
-  }
-
-
   const rawFile = file.raw;
   const content = await readFile(rawFile);
   // file name
@@ -92,8 +77,8 @@ const request = async ({
   // Data need to be sliced if file > 475K
   let fileSize = rawFile.size;
   let chunks = [];
-  if (fileSize > 475 * 1024) {
-    const chunkSize = Math.ceil(fileSize / (475 * 1024));
+  if (fileSize > chunkLength) {
+    const chunkSize = Math.ceil(fileSize / chunkLength);
     chunks = bufferChunk(content, chunkSize);
     fileSize = fileSize / chunkSize;
   } else {
@@ -107,13 +92,14 @@ const request = async ({
     return;
   }
 
+  let cost = 0;
+  if (fileSize > 24 * 1024 - 326) {
+    cost = Math.floor((fileSize + 326) / 1024 / 24);
+  }
   let uploadState = true;
+  let notEnoughBalance = false;
   for (const index in chunks) {
     const chunk = chunks[index];
-    let cost = 0;
-    if (fileSize > 24 * 1024 - 326) {
-      cost = Math.floor((fileSize + 326) / 1024 / 24);
-    }
     const hexData = '0x' + chunk.toString('hex');
     const localHash = '0x' + sha3(chunk);
     const hash = await fileContract.getChunkHash(hexName, index);
@@ -125,6 +111,14 @@ const request = async ({
 
     try {
       // file is remove or change
+      const balance = await fileContract.provider.getBalance(account);
+      if(balance.lte(ethers.utils.parseEther(cost.toString()))){
+        // not enough balance
+        uploadState = false;
+        notEnoughBalance = true;
+        break;
+      }
+
       const tx = await fileContract.writeChunk(hexName, hexType, index, hexData, {
         value: ethers.utils.parseEther(cost.toString())
       });
@@ -144,8 +138,12 @@ const request = async ({
     const url = "https://galileo.web3q.io/file.w3q/" + account + "/" + name;
     onSuccess({ path: url});
   } else {
-    onError(new Error('upload request failed!'));
+    if (notEnoughBalance) {
+      onError(new NotEnoughBalance('Not enough balance'));
+    } else {
+      onError(new Error('upload request failed!'));
+    }
   }
 };
 
-export default request;
+export class NotEnoughBalance extends Error {}

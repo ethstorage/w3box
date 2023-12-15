@@ -16,11 +16,21 @@
         <el-footer class="footer">
           <div class="footer-layout">
             <el-row>
-              <img class="footer-img" src="./assets/tweet.png"/>
-              <img class="footer-img" src="./assets/mid.png"/>
-              <img class="footer-img" src="./assets/git.png"/>
-              <img class="footer-img" src="./assets/tel.png"/>
-              <img class="footer-img" src="./assets/dis.png"/>
+              <a href="https://github.com/ethstorage/w3box" target="_blank">
+                <img class="footer-img" src="@/assets/git.png">
+              </a>
+              <a href="https://twitter.com/EthStorage" target="_blank">
+                <img class="footer-img" src="@/assets/tweet.png">
+              </a>
+              <a href="https://ethstorage.medium.com/" target="_blank">
+                <img class="footer-img" src="@/assets/mid.png">
+              </a>
+              <a href="https://t.me/ethstorage" target="_blank">
+                <img class="footer-img" src="@/assets/tel.png">
+              </a>
+              <a href="https://discord.gg/xhCwaMp7ps" target="_blank">
+                <img class="footer-img" src="@/assets/dis.png">
+              </a>
             </el-row>
           </div>
         </el-footer>
@@ -111,7 +121,7 @@ export default {
   margin: 0 10px;
 }
 
-@media screen and (max-width: 420px) {
+@media screen and (max-width: 500px) {
   .footer-img {
     width: 28px;
   }
