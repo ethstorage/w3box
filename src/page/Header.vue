@@ -6,6 +6,9 @@
       </b-navbar-item>
     </template>
     <template #end>
+      <b-navbar-item v-if="sessionAddress" class="connection" tag="div">
+        <SessionWallet />
+      </b-navbar-item>
       <b-navbar-item class="connection" tag="div">
         <Wallet/>
       </b-navbar-item>
@@ -15,11 +18,18 @@
 
 <script>
 import Wallet from "@/components/Wallet";
+import SessionWallet from "@/components/SessionWallet";
 
 export default {
-  name: 'Header',
+  name: 'HeaderPage',
   components: {
-    Wallet
+    Wallet,
+    SessionWallet
+  },
+  computed: {
+    sessionAddress() {
+      return this.$store.state.sessionAddr;
+    },
   }
 }
 </script>

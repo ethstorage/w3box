@@ -15,7 +15,7 @@ const routes = [
     path: '/address/:address',
     name: 'Profile',
     component: Profile,
-  },
+  }
 ];
 
 const router = new VueRouter({

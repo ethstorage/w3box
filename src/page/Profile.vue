@@ -6,7 +6,7 @@
         <div class="profile-title">
           Files
         </div>
-        <el-button v-if="this.result&&this.result.length>0&&!isDelete" round class="profile-delete" @click="openDelete">
+        <el-button disabled v-if="this.result&&this.result.length>0&&!isDelete" round class="profile-delete" @click="openDelete">
           Delete multiple
         </el-button>
         <div v-if="isDelete">
@@ -49,7 +49,8 @@
             <span v-if="item.showProgress" class="go-upload-list-item-delete">
               <update-icon class="icon-loading" name="loading"></update-icon>
             </span>
-            <span v-else-if="!isDelete" class="go-upload-list-item-delete" @click="onDelete(item)">
+            <span v-else-if="!isDelete" class="go-upload-list-item-delete disabled-none">
+              <!--@click="onDelete(item)">-->
               <update-icon name="close"></update-icon>
             </span>
           </div>
@@ -68,7 +69,7 @@ const copy = require('clipboard-copy')
 const hexToString = (h) => ethers.utils.toUtf8String(h);
 
 export default {
-  name: 'Profile',
+  name: 'ProfilePage',
   data: () => {
     return {
       name: "",
@@ -79,14 +80,19 @@ export default {
   },
   components: { UpdateIcon },
   computed: {
-    chainConfig() {
-      return this.$store.state.chainConfig;
+    account() {
+      return this.$store.state.account;
+    },
+    aaAddress() {
+      return this.$store.state.sessionAddr;
     },
   },
   watch: {
-    chainConfig: function () {
-      if (this.$store.state.chainConfig && this.$store.state.chainConfig.chainID) {
+    aaAddress: function () {
+      if (this.aaAddress) {
         this.onSearch();
+      } else {
+        this.result = [];
       }
     }
   },
@@ -111,10 +117,11 @@ export default {
       this.$router.push({path: "/"});
     },
     onSearch() {
-      const { FileBoxController} = this.$store.state.chainConfig;
-      if (!FileBoxController) {
+      if (!this.aaAddress) {
+        this.result = [];
         return;
       }
+      const { FileBoxController} = this.$store.state.chainConfig;
       getUploadByAddress(FileBoxController, this.$route.params.address)
           .then(value => {
             this.result = value;
@@ -137,7 +144,7 @@ export default {
         return;
       }
       item.showProgress = true;
-      deleteFile(FileBoxController, item.name)
+      deleteFile(FileBoxController, this.account, item.name)
           .then((v) => {
             if (v) {
               this.result = this.result.filter(value => item !== value);
@@ -182,7 +189,7 @@ export default {
           item.showProgress = true;
           names.push(item.name);
         }
-        deleteFiles(FileBoxController, names)
+        deleteFiles(FileBoxController, this.account, names)
             .then((v) => {
               if (v) {
                 for(const item of this.checkedDeletes) {
@@ -232,7 +239,7 @@ export default {
 
 .domain-loading {
   min-width: 40vw;
-  min-height: 50vh;
+  min-height: 60vh;
 }
 .domain-loading >>> .el-loading-mask{
   background: transparent !important;
@@ -336,6 +343,10 @@ export default {
   cursor: pointer;
   padding: 15px;
 }
+.disabled-none {
+  cursor: not-allowed;
+}
+
 .icon-loading {
   animation: rotating 2s infinite linear;
 }

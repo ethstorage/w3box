@@ -2,25 +2,33 @@
   <div id="wallet">
     <button
       class="btn-connect"
-      v-if="!this.currentAccount"
+      v-if="!this.account"
       @click.stop="connectWallet"
     >
       Connect
     </button>
     <div v-else class="user">
-      <div class="account">
-        {{ this.accountShort }}
-        &nbsp;|&nbsp;
-        {{ this.networkId === 3334 ? "Galileo Testnet": "Mainnet" }}
+      <div class="metamask" @click.stop="onOpenCreate">
+        <div class="metamask-img" />
+        <div class="account">{{ this.accountShort }}</div>
       </div>
       <div class="favorite" @click.stop="goProfile"/>
     </div>
+
+    <b-modal v-model="isShow"
+             :canCancel="false"
+             has-modal-card
+             trap-focus>
+      <WalletCard/>
+    </b-modal>
   </div>
 </template>
 
 <script>
 import { mapActions } from "vuex";
 import { chains } from '@/store/state';
+import WalletCard from './WalletCard.vue';
+import {createWallet, getSessionKey} from "@/utils/Session";
 
 export class UnsupportedChainIdError extends Error {
   constructor() {
@@ -28,94 +36,91 @@ export class UnsupportedChainIdError extends Error {
   }
 }
 
-const chain = 3334;
+const chain = 7011893062;
 const chainID = `0x${chain.toString(16)}`;
-const nodes = ['https://galileo.web3q.io:8545']
-const explorers = [`https://explorer.galileo.web3q.io/`];
+const nodes = ['https://rpc.dencun-devnet-12.ethpandaops.io']
+const explorers = ['https://explorer.dencun-devnet-12.ethpandaops.io'];
 
 export default {
-  name: "Wallet",
-  props: {},
-
+  name: "WalletComponent",
   data: () => ({
-    networkId: chain,
-    currentAccount: null,
+    isShow: false,
+    contract: '',
   }),
-  async created() {
-    this.connectWallet();
-    window.ethereum.on("chainChanged", this.handleChainChanged);
-    window.ethereum.on("accountsChanged", this.handleAccountsChanged);
+  components: {
+    WalletCard
   },
   computed: {
+    account() {
+      return this.$store.state.account;
+    },
     accountShort() {
       return (
-        this.currentAccount.substring(0, 6) +
-        "..." +
-        this.currentAccount.substring(
-          this.currentAccount.length - 4,
-          this.currentAccount.length
-        )
+          this.account.substring(0, 6) +
+          "..." +
+          this.account.substring(
+              this.account.length - 4,
+              this.account.length
+          )
       );
     },
   },
   methods: {
-    ...mapActions(["setChainConfig", "setAccount"]),
+    ...mapActions(["setChainConfig", "setAccount", "setSessionKey", "setSessionAddr", "setSignature"]),
+    goProfile() {
+      this.$router.push({path: "/address/" + this.account});
+    },
+    onOpenCreate() {
+      this.isShow = true;
+    },
     connectWallet() {
       if (!window.ethereum) {
-        this.$message.error('Can\'t setup the Web3Q network on metamask because window.ethereum is undefined');
+        this.$message.error('Can\'t setup the Devnet-12 network on metamask because window.ethereum is undefined');
         return;
       }
       this.login();
     },
     async handleChainChanged() {
-      const newChainId = await window.ethereum.request({ method: "eth_chainId" });
+      const newChainId = await window.ethereum.request({method: "eth_chainId"});
       if (chainID !== newChainId) {
-        this.currentAccount = null;
+        this.setSessionKey(null);
+        this.setSessionAddr(null)
         this.setAccount(null);
-        this.setChainConfig({});
-      } else {
-        const c = chains.find((v) => v.chainID === chainID);
-        this.setChainConfig(JSON.parse(JSON.stringify(c)));
-        if (!this.currentAccount) {
-          await this.login();
-        }
+        this.setSignature(null);
+        this.isShow = false;
       }
     },
-    async handleAccountsChanged(accounts) {
-      // chain
-      const newChainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainID !== newChainId) {
-        //  not support chain
-        this.setChainConfig({});
-      } else {
-        const c = chains.find((v) => v.chainID === chainID);
-        this.setChainConfig(JSON.parse(JSON.stringify(c)));
-      }
-
-      // account
+    async handleAccountsChanged() {
+      this.setSignature(null);
+      this.setSessionKey(null);
+      this.setSessionAddr(null)
+      this.setAccount(null);
+      this.isShow = false;
+    },
+    async handleAccounts(accounts) {
       if (accounts.length === 0) {
-        this.currentAccount = null;
+        this.setSignature(null);
         this.setAccount(null);
+        this.setSessionKey(null);
+        this.setSessionAddr(null);
         console.warn(
-          "MetaMask is locked or the user has not connected any accounts"
+            "MetaMask is locked or the user has not connected any accounts"
         );
         return;
       }
+
+      const newChainId = await window.ethereum.request({method: "eth_chainId"});
       if (chainID !== newChainId) {
-        this.currentAccount = null;
-        this.setAccount(null);
         throw new UnsupportedChainIdError();
       }
 
-      if (accounts[0] !== this.currentAccount) {
-        this.currentAccount = accounts[0];
-        this.setAccount(accounts[0]);
-      }
+      this.setAccount(accounts[0]);
+      await this.initSessionInfo();
     },
     async login() {
       window.ethereum
-          .request({ method: "eth_requestAccounts" })
-          .then(this.handleAccountsChanged)
+          .request({method: "eth_requestAccounts"})
+          .then(this.handleAccounts)
           .catch(async (error) => {
             if (error.code === 4001) {
               this.$message.error('User rejected');
@@ -138,10 +143,10 @@ export default {
             params: [
               {
                 chainId: chainID,
-                chainName: 'Web3Q Galileo',
+                chainName: 'Ethereum Devnet',
                 nativeCurrency: {
-                  name: 'W3Q',
-                  symbol: 'W3Q',
+                  name: 'ETH',
+                  symbol: 'ETH',
                   decimals: 18,
                 },
                 rpcUrls: nodes,
@@ -160,13 +165,32 @@ export default {
           return false
         }
       } else {
-        this.$message.error('Can\'t setup the Web3Q network on metamask because window.ethereum is undefined');
+        this.$message.error('Can\'t switch the network on metamask because window.ethereum is undefined');
         return false
       }
     },
-    goProfile(){
-      this.$router.push({path: "/address/" + this.currentAccount});
-    }
+
+    async initSessionInfo() {
+      const sessionKey = getSessionKey(this.account);
+      if (sessionKey) {
+        // login success
+        this.setSessionKey(sessionKey);
+        const wallet = createWallet(sessionKey);
+        this.setSessionAddr(wallet.address);
+      } else {
+        this.isShow = true;
+      }
+    },
+  },
+  async created() {
+    const c = chains.find((v) => v.chainID === chainID);
+    const config = JSON.parse(JSON.stringify(c));
+    this.setChainConfig(config);
+    this.contract = config.FileBoxController;
+
+    // this.connectWallet();
+    window.ethereum.on("chainChanged", this.handleChainChanged);
+    window.ethereum.on("accountsChanged", this.handleAccountsChanged);
   },
 };
 </script>
@@ -182,21 +206,41 @@ export default {
   flex-direction: row;
 }
 
-.account {
+.metamask {
   height: 38px;
-  font-size: 15px;
-  line-height: 38px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 4px 4px 4px 8px;
   background: #FFFFFF;
-  border-radius: 36px;
   border: 1px solid #E8E6F2;
-  padding: 0 15px;
-  text-align: center;
+  cursor: pointer;
 }
+.metamask-img {
+  width: 24px;
+  height: 24px;
+  background-image: url("../assets/metamask.svg");
+  background-repeat:no-repeat;
+  background-size:100% 100%;
+  -moz-background-size:100% 100%;
+}
+.account {
+  font-size: 14px;
+  line-height: 30px;
+  background: #ECF0F9;
+  border-radius: 12px;
+  border: none;
+  padding: 0 8px;
+  text-align: center;
+  margin-left: 10px;
+}
+
 .favorite{
   cursor: pointer;
   height: 38px;
   width: 38px;
-  margin-left: 10px;
+  margin-left: 15px;
   padding: 0;
   background-image: url("../assets/user.png");
   background-repeat:no-repeat;
@@ -206,13 +250,14 @@ export default {
 
 .btn-connect {
   transition: all 0.1s ease 0s;
-  width: 120px;
-  height: 44px;
+  width: 100px;
+  height: 38px;
   color: #ffffff;
-  font-size: 18px;
+  font-size: 19px;
   border: 0;
   background: #52DEFF;
-  border-radius: 36px;
+  border-radius: 32px;
+  cursor: pointer;
 }
 .btn-connect:hover {
   background-color: #52DEFF90;

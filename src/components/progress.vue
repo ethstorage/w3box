@@ -8,7 +8,7 @@
 
 <script>
 export default {
-  name: 'Progress',
+  name: 'ProgressComponent',
   props: {
     percent: {
       type: Number,

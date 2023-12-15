@@ -1,24 +1,13 @@
 import { ethers } from "ethers";
-const sha3 = require('js-sha3').keccak_256;
+import {FileContractSession} from "@/utils/contract";
+import {EncodeBlobs, GenerateBlobs, getBlobHash, Send4844Tx} from "@/utils/send-4844-tx";
+import {getSessionKey, queryBalance} from "@/utils/Session";
 
-const FileContractInfo = {
-  abi: [
-    "function writeChunk(bytes memory name, bytes memory fileType, uint256 chunkId, bytes calldata data) public payable",
-    "function remove(bytes memory name) external returns (uint256)",
-    "function removes(bytes[] memory names) public",
-    "function countChunks(bytes memory name) external view returns (uint256)",
-    "function getChunkHash(bytes memory name, uint256 chunkId) public view returns (bytes32)",
-    "function getAuthorFiles(address author) public view returns (uint256[] memory times,bytes[] memory names,bytes[] memory types,string[] memory urls)"
-  ],
-};
+const MAX_BLOB_COUNT = 3;
+const ENCODE_BLOB_SIZE = 31 * 4096;
+const JSON_RPC = "https://rpc.dencun-devnet-12.ethpandaops.io";
 
 const stringToHex = (s) => ethers.utils.hexlify(ethers.utils.toUtf8Bytes(s));
-
-export const FileContract = (address) => {
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  const contract = new ethers.Contract(address, FileContractInfo.abi, provider);
-  return contract.connect(provider.getSigner());
-};
 
 const readFile = (file) => {
   return new Promise((resolve) => {
@@ -30,25 +19,12 @@ const readFile = (file) => {
   });
 }
 
-const bufferChunk = (buffer, chunkSize) => {
-  let i = 0;
-  let result = [];
-  const len = buffer.length;
-  const chunkLength = Math.ceil(len / chunkSize);
-  while (i < len) {
-    result.push(buffer.slice(i, i += chunkLength));
-  }
-  return result;
-}
-
-const clearOldFile = async (fileContract, chunkSize, hexName) => {
+const clearOldFile = async (fileContract, account, chunkSize, hexName) => {
   try {
-    const oldChunkSize = await fileContract.countChunks(hexName);
+    const oldChunkSize = await fileContract.countChunks(account, hexName);
     if (oldChunkSize > chunkSize) {
       // remove
-      const tx = await fileContract.remove(hexName);
-      console.log(`Remove file: ${hexName}`);
-      console.log(`Transaction Id: ${tx.hash}`);
+      const tx = await fileContract.remove(account, hexName);
       const receipt = await tx.wait();
       return receipt.status;
     }
@@ -59,9 +35,9 @@ const clearOldFile = async (fileContract, chunkSize, hexName) => {
 }
 
 export const request = async ({
-  chunkLength,
   account,
   contractAddress,
+  fdContract,
   dirPath,
   file,
   onSuccess,
@@ -74,68 +50,111 @@ export const request = async ({
   const name = dirPath + rawFile.name;
   const hexName = stringToHex(name);
   const hexType = stringToHex(rawFile.type);
-  // Data need to be sliced if file > 475K
-  let fileSize = rawFile.size;
-  let chunks = [];
-  if (fileSize > chunkLength) {
-    const chunkSize = Math.ceil(fileSize / chunkLength);
-    chunks = bufferChunk(content, chunkSize);
-    fileSize = fileSize / chunkSize;
-  } else {
-    chunks.push(content);
-  }
+  const fileSize = rawFile.size;
 
-  const fileContract = FileContract(contractAddress);
-  const clear = await clearOldFile(fileContract, chunks.length, hexName, hexType)
+  // Data to blob
+  const blobs = EncodeBlobs(content);
+
+  let pk = getSessionKey(account);
+  pk = '0x' + Buffer.from(pk, 'base64').toString('hex');
+  const sessionAddr = new ethers.Wallet(pk).address;
+  const send4844Tx = new Send4844Tx(JSON_RPC, pk);
+  const fileContract = await FileContractSession(contractAddress, pk);
+  const clear = await clearOldFile(fileContract, account, blobs.length, hexName)
   if (!clear) {
     onError(new Error("Check Old File Fail!"));
     return;
   }
 
-  let cost = 0;
-  if (fileSize > 24 * 1024 - 326) {
-    cost = Math.floor((fileSize + 326) / 1024 / 24);
-  }
+  const cost = await fileContract.upfrontPayment();
+
   let uploadState = true;
   let notEnoughBalance = false;
-  for (const index in chunks) {
-    const chunk = chunks[index];
-    const hexData = '0x' + chunk.toString('hex');
-    const localHash = '0x' + sha3(chunk);
-    const hash = await fileContract.getChunkHash(hexName, index);
-    if (localHash === hash) {
-      console.log(`File ${name} chunkId: ${index}: The data is not changed.`);
-      onProgress({ percent: Number(index) + 1});
+  const blobLength = blobs.length;
+  for (let i = 0; i < blobLength; i += MAX_BLOB_COUNT) {
+    // split, pack
+    const blobArr = [];
+    const hexBlobArr = [];
+    const indexArr = [];
+    const lenArr = [];
+    let max = i + MAX_BLOB_COUNT;
+    if (max > blobLength) {
+      max = blobLength;
+    }
+    for (let j = i; j < max; j++) {
+      blobArr.push(blobs[j]);
+      hexBlobArr.push(ethers.utils.hexlify(blobs[j]))
+      indexArr.push(j);
+      if (j === blobLength - 1) {
+        lenArr.push(fileSize - ENCODE_BLOB_SIZE * (blobLength - 1));
+      } else {
+        lenArr.push(ENCODE_BLOB_SIZE);
+      }
+    }
+
+    // get blob info
+    const result = await GenerateBlobs(hexBlobArr);
+    if (!result) {
+      // generate blob fail
+      uploadState = false;
+      break;
+    }
+
+    // check change
+    const {versionedHashes, commitments, proofs} = result;
+    let hasChange = false;
+    for (let j = 0; j < blobArr.length; j++) {
+      const dataHash = await fileContract.getChunkHash(account, hexName, indexArr[j]);
+      const localHash = getBlobHash(versionedHashes[j]);
+      if (dataHash !== localHash) {
+        hasChange = true;
+        break;
+      }
+    }
+    if (!hasChange) {
+      for (let j = 0; j < blobArr.length; j++) {
+        onProgress({percent: Number(indexArr[j]) + 1});
+
+      }
+      console.log(`File ${name} chunkId: ${indexArr}: The data is not changed.`);
       continue;
+    }
+
+    let balance = await queryBalance(sessionAddr);
+    balance = ethers.utils.parseEther(balance);
+    const value = cost.mul(blobArr.length);
+    if (balance.lt(value)) {
+      // gas not enough
+      uploadState = false;
+      notEnoughBalance = true;
+      break;
     }
 
     try {
       // file is remove or change
-      const balance = await fileContract.provider.getBalance(account);
-      if(balance.lte(ethers.utils.parseEther(cost.toString()))){
-        // not enough balance
-        uploadState = false;
-        notEnoughBalance = true;
-        break;
-      }
-
-      const tx = await fileContract.writeChunk(hexName, hexType, index, hexData, {
-        value: ethers.utils.parseEther(cost.toString())
+      const tx = await fileContract.populateTransaction.writeChunk(account, hexName, hexType, indexArr, lenArr, {
+        value: value,
       });
-      console.log(`Transaction Id: ${tx.hash}`);
-      const receipt = await tx.wait();
+      const hash = send4844Tx.sendTx(blobArr, proofs, commitments, versionedHashes, tx);
+      console.log(`Transaction Id: ${hash}`);
+      const receipt = await send4844Tx.getTxReceipt(hash);
       if (!receipt.status) {
         uploadState = false;
         break;
       }
-      onProgress({ percent: Number(index) + 1});
+
+      for (let j = 0; j < blobArr.length; j++) {
+        onProgress({percent: Number(indexArr[j]) + 1});
+      }
     } catch (e) {
+      console.log(e)
       uploadState = false;
       break;
     }
   }
+
   if (uploadState) {
-    const url = "https://galileo.web3q.io/file.w3q/" + account + "/" + name;
+    const url = "https://" +  fdContract + ".333.w3link.io/" + account + "/" + name;
     onSuccess({ path: url});
   } else {
     if (notEnoughBalance) {
