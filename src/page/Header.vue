@@ -17,7 +17,7 @@
 import Wallet from "@/components/Wallet";
 
 export default {
-  name: 'Header',
+  name: 'HeaderComponent',
   components: {
     Wallet
   }

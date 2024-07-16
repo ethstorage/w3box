@@ -34,7 +34,7 @@ const nodes = ['https://galileo.web3q.io:8545']
 const explorers = [`https://explorer.galileo.web3q.io/`];
 
 export default {
-  name: "Wallet",
+  name: "WalletComponent",
   props: {},
 
   data: () => ({

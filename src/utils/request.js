@@ -1,5 +1,10 @@
 import { ethers } from "ethers";
+import { Buffer } from 'buffer';
+
 const sha3 = require('js-sha3').keccak_256;
+
+// @ts-ignore
+window.Buffer = Buffer;
 
 const FileContractInfo = {
   abi: [
@@ -12,23 +17,13 @@ const FileContractInfo = {
   ],
 };
 
-const stringToHex = (s) => ethers.utils.hexlify(ethers.utils.toUtf8Bytes(s));
+const stringToHex = (s) => ethers.hexlify(ethers.toUtf8Bytes(s));
 
-export const FileContract = (address) => {
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
+export const FileContract = async (address) => {
+  const provider = new ethers.BrowserProvider(window.ethereum);
   const contract = new ethers.Contract(address, FileContractInfo.abi, provider);
-  return contract.connect(provider.getSigner());
+  return contract.connect(await provider.getSigner());
 };
-
-const readFile = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (res) => {
-      resolve(Buffer.from(res.target.result));
-    };
-    reader.readAsArrayBuffer(file);
-  });
-}
 
 const bufferChunk = (buffer, chunkSize) => {
   let i = 0;
@@ -69,7 +64,8 @@ export const request = async ({
   onProgress
 }) => {
   const rawFile = file.raw;
-  const content = await readFile(rawFile);
+  let content = await rawFile.arrayBuffer();
+  content = Buffer.from(content);
   // file name
   const name = dirPath + rawFile.name;
   const hexName = stringToHex(name);
@@ -85,7 +81,7 @@ export const request = async ({
     chunks.push(content);
   }
 
-  const fileContract = FileContract(contractAddress);
+  const fileContract = await FileContract(contractAddress);
   const clear = await clearOldFile(fileContract, chunks.length, hexName, hexType)
   if (!clear) {
     onError(new Error("Check Old File Fail!"));
@@ -111,8 +107,9 @@ export const request = async ({
 
     try {
       // file is remove or change
-      const balance = await fileContract.provider.getBalance(account);
-      if(balance.lte(ethers.utils.parseEther(cost.toString()))){
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const balance = await provider.getBalance(account);
+      if(balance < ethers.parseEther(cost.toString())){
         // not enough balance
         uploadState = false;
         notEnoughBalance = true;
@@ -120,7 +117,7 @@ export const request = async ({
       }
 
       const tx = await fileContract.writeChunk(hexName, hexType, index, hexData, {
-        value: ethers.utils.parseEther(cost.toString())
+        value: ethers.parseEther(cost.toString())
       });
       console.log(`Transaction Id: ${tx.hash}`);
       const receipt = await tx.wait();
@@ -130,6 +127,7 @@ export const request = async ({
       }
       onProgress({ percent: Number(index) + 1});
     } catch (e) {
+      console.log(e);
       uploadState = false;
       break;
     }

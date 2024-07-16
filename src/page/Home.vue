@@ -12,7 +12,7 @@
 import W3qDeployer from '@/components/w3q-deployer.vue';
 
 export default {
-  name: 'Home',
+  name: 'HomeComponent',
   components: {W3qDeployer},
   computed: {
     contract() {
