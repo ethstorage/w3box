@@ -36,21 +36,21 @@ contract SimpleW3box {
     FlatDirectory public fileFD;
 
     address public owner;
-    string public gateway;
+    string public chainId;
 
     mapping(address => FilesInfo) fileInfos;
 
-    constructor(string memory _gateway) {
+    constructor(string memory _chainId, address _ethStorage) {
         owner = msg.sender;
-        gateway = _gateway;
-        fileFD = new FlatDirectory(0);
+        chainId = _chainId;
+        fileFD = new FlatDirectory(0, 0, _ethStorage);
     }
 
     receive() external payable {
     }
 
-    function setGateway(string calldata _gateway) public isOwner {
-        gateway = _gateway;
+    function setChainId(string calldata _chainId) public isOwner {
+        chainId = _chainId;
     }
 
     function write(bytes memory name, bytes memory fileType, bytes calldata data) public payable {
@@ -67,6 +67,12 @@ contract SimpleW3box {
         }
 
         fileFD.writeChunk{value: msg.value}(getNewName(msg.sender, name), chunkId, data);
+    }
+
+    function removes(bytes[] memory names) public {
+        for (uint256 i; i < names.length; i++) {
+            remove(names[i]);
+        }
     }
 
     function remove(bytes memory name) public returns (uint256) {
@@ -98,7 +104,7 @@ contract SimpleW3box {
         return fileFD.countChunks(getNewName(msg.sender, name));
     }
 
-    function getNewName(address author,bytes memory name) public pure returns (bytes memory) {
+    function getNewName(address author, bytes memory name) public pure returns (bytes memory) {
         return abi.encodePacked(
             Strings.toHexString(uint256(uint160(author)), 20),
             '/',
@@ -107,9 +113,13 @@ contract SimpleW3box {
     }
 
     function getUrl(bytes memory name) public view returns (string memory) {
+        // https://0xf208000076869ca535575baddd9152ac0a05986c.3333.w3link.io/app.html
         return string(abi.encodePacked(
-                gateway,
-                'file.w3q/',
+                'https://',
+                Strings.toHexString(uint256(uint160(address(fileFD))), 20),
+                ".",
+                chainId,
+                '.w3link.io/',
                 name
             ));
     }
@@ -137,4 +147,3 @@ contract SimpleW3box {
         }
     }
 }
-

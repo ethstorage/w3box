@@ -4,7 +4,7 @@
     <p class="title">
       The File Hosting Service on EthStorage
     </p>
-    <w3q-deployer multiple :fileContract="contract" :account="account" class="drop"/>
+    <w3q-deployer multiple :fileContract="contract" :flatDirectory="flatDirectory" :account="account" class="drop"/>
   </div>
 </template>
 
@@ -19,6 +19,13 @@ export default {
       if (this.$store.state.chainConfig && this.$store.state.chainConfig.chainID) {
         const {FileBoxController} = this.$store.state.chainConfig;
         return FileBoxController;
+      }
+      return null;
+    },
+    flatDirectory() {
+      if (this.$store.state.chainConfig && this.$store.state.chainConfig.chainID) {
+        const {FlatDirectory} = this.$store.state.chainConfig;
+        return FlatDirectory;
       }
       return null;
     },

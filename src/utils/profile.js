@@ -2,7 +2,7 @@ import { FileContract } from "./request";
 
 // contract
 export const getUploadByAddress = async (controller, address) => {
-    const fileContract = FileContract(controller);
+    const fileContract = await FileContract(controller);
     const result = await fileContract.getAuthorFiles(address);
     const files = [];
     const times = result[0];
@@ -26,14 +26,14 @@ export const getUploadByAddress = async (controller, address) => {
 }
 
 export const deleteFile = async (controller, file) => {
-    const fileContract = FileContract(controller);
+    const fileContract = await FileContract(controller);
     const tx = await fileContract.remove(file);
     const receipt = await tx.wait();
     return receipt.status;
 }
 
 export const deleteFiles = async (controller, files) => {
-    const fileContract = FileContract(controller);
+    const fileContract = await FileContract(controller);
     const tx = await fileContract.removes(files);
     const receipt = await tx.wait();
     return receipt.status;

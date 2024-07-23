@@ -57,6 +57,7 @@ export const request = async ({
   chunkLength,
   account,
   contractAddress,
+  flatDirectoryAddress,
   dirPath,
   file,
   onSuccess,
@@ -66,17 +67,16 @@ export const request = async ({
   const rawFile = file.raw;
   let content = await rawFile.arrayBuffer();
   content = Buffer.from(content);
+
   // file name
   const name = dirPath + rawFile.name;
   const hexName = stringToHex(name);
   const hexType = stringToHex(rawFile.type);
-  // Data need to be sliced if file > 475K
   let fileSize = rawFile.size;
   let chunks = [];
   if (fileSize > chunkLength) {
     const chunkSize = Math.ceil(fileSize / chunkLength);
     chunks = bufferChunk(content, chunkSize);
-    fileSize = fileSize / chunkSize;
   } else {
     chunks.push(content);
   }
@@ -88,12 +88,7 @@ export const request = async ({
     return;
   }
 
-  let cost = 0;
-  if (fileSize > 24 * 1024 - 326) {
-    cost = Math.floor((fileSize + 326) / 1024 / 24);
-  }
   let uploadState = true;
-  let notEnoughBalance = false;
   for (const index in chunks) {
     const chunk = chunks[index];
     const hexData = '0x' + chunk.toString('hex');
@@ -107,18 +102,7 @@ export const request = async ({
 
     try {
       // file is remove or change
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const balance = await provider.getBalance(account);
-      if(balance < ethers.parseEther(cost.toString())){
-        // not enough balance
-        uploadState = false;
-        notEnoughBalance = true;
-        break;
-      }
-
-      const tx = await fileContract.writeChunk(hexName, hexType, index, hexData, {
-        value: ethers.parseEther(cost.toString())
-      });
+      const tx = await fileContract.writeChunk(hexName, hexType, index, hexData);
       console.log(`Transaction Id: ${tx.hash}`);
       const receipt = await tx.wait();
       if (!receipt.status) {
@@ -133,15 +117,10 @@ export const request = async ({
     }
   }
   if (uploadState) {
-    const url = "https://galileo.web3q.io/file.w3q/" + account + "/" + name;
+    // https://0xf208000076869ca535575baddd9152ac0a05986c.3333.w3link.io/0x1111.../app.html
+    const url = "https://" + flatDirectoryAddress + '.3336.w3link.io/' + account + "/" + name;
     onSuccess({ path: url});
   } else {
-    if (notEnoughBalance) {
-      onError(new NotEnoughBalance('Not enough balance'));
-    } else {
-      onError(new Error('upload request failed!'));
-    }
+    onError(new Error('upload request failed!'));
   }
 };
-
-export class NotEnoughBalance extends Error {}

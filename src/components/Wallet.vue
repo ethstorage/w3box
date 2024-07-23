@@ -11,7 +11,7 @@
       <div class="account">
         {{ this.accountShort }}
         &nbsp;|&nbsp;
-        {{ this.networkId === 3334 ? "Galileo Testnet": "Mainnet" }}
+        {{ "QuarkChain L2 Testnet" }}
       </div>
       <div class="favorite" @click.stop="goProfile"/>
     </div>
@@ -28,10 +28,10 @@ export class UnsupportedChainIdError extends Error {
   }
 }
 
-const chain = 3334;
+const chain = 43069;
 const chainID = `0x${chain.toString(16)}`;
-const nodes = ['https://galileo.web3q.io:8545']
-const explorers = [`https://explorer.galileo.web3q.io/`];
+const nodes = ['http://65.109.20.29:8545']
+const explorers = [`http://65.109.20.29/`];
 
 export default {
   name: "WalletComponent",
@@ -138,10 +138,10 @@ export default {
             params: [
               {
                 chainId: chainID,
-                chainName: 'Web3Q Galileo',
+                chainName: 'QuarkChain L2 Testnet',
                 nativeCurrency: {
-                  name: 'W3Q',
-                  symbol: 'W3Q',
+                  name: 'QKC',
+                  symbol: 'QKC',
                   decimals: 18,
                 },
                 rpcUrls: nodes,
