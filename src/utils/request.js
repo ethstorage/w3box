@@ -118,7 +118,7 @@ export const request = async ({
   }
   if (uploadState) {
     // https://0xf208000076869ca535575baddd9152ac0a05986c.3333.w3link.io/0x1111.../app.html
-    const url = "https://" + flatDirectoryAddress + '.3336.w3link.io/' + account + "/" + name;
+    const url = "https://" + flatDirectoryAddress + '.3337.w3link.io/' + account + "/" + name;
     onSuccess({ path: url});
   } else {
     onError(new Error('upload request failed!'));

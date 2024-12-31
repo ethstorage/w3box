@@ -28,10 +28,10 @@ export class UnsupportedChainIdError extends Error {
   }
 }
 
-const chain = 43069;
+const chain = 3335;
 const chainID = `0x${chain.toString(16)}`;
-const nodes = ['https://rpc.testnet.l2.quarkchain.io:8545']
-const explorers = [`https://explorer.testnet.l2.quarkchain.io/`];
+const nodes = ['https://rpc.beta.testnet.l2.quarkchain.io:8545']
+const explorers = [`https://explorer.beta.testnet.l2.quarkchain.io/`];
 
 export default {
   name: "WalletComponent",
