@@ -11,7 +11,7 @@
       <div class="account">
         {{ this.accountShort }}
         &nbsp;|&nbsp;
-        {{ "QuarkChain L2 Testnet" }}
+        {{ "Sepolia Network" }}
       </div>
       <div class="favorite" @click.stop="goProfile"/>
     </div>
@@ -22,16 +22,8 @@
 import { mapActions } from "vuex";
 import { chains } from '@/store/state';
 
-export class UnsupportedChainIdError extends Error {
-  constructor() {
-    super('UnsupportedChainIdError: not support chain')
-  }
-}
-
-const chain = 3335;
-const chainID = `0x${chain.toString(16)}`;
-const nodes = ['https://rpc.beta.testnet.l2.quarkchain.io:8545']
-const explorers = [`https://explorer.beta.testnet.l2.quarkchain.io/`];
+const chain = 11155111;
+const CHAIN_ID = `0x${chain.toString(16)}`;
 
 export default {
   name: "WalletComponent",
@@ -62,19 +54,19 @@ export default {
     ...mapActions(["setChainConfig", "setAccount"]),
     connectWallet() {
       if (!window.ethereum) {
-        this.$message.error('Can\'t setup the QuarkChain L2 Testnet on metamask because window.ethereum is undefined');
+        this.$message.error('Can\'t setup the Network on metamask because window.ethereum is undefined');
         return;
       }
       this.login();
     },
     async handleChainChanged() {
       const newChainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainID !== newChainId) {
+      if (CHAIN_ID !== newChainId) {
         this.currentAccount = null;
         this.setAccount(null);
         this.setChainConfig({});
       } else {
-        const c = chains.find((v) => v.chainID === chainID);
+        const c = chains.find((v) => v.chainID === CHAIN_ID);
         this.setChainConfig(JSON.parse(JSON.stringify(c)));
         if (!this.currentAccount) {
           await this.login();
@@ -82,17 +74,6 @@ export default {
       }
     },
     async handleAccountsChanged(accounts) {
-      // chain
-      const newChainId = await window.ethereum.request({ method: "eth_chainId" });
-      if (chainID !== newChainId) {
-        //  not support chain
-        this.setChainConfig({});
-      } else {
-        const c = chains.find((v) => v.chainID === chainID);
-        this.setChainConfig(JSON.parse(JSON.stringify(c)));
-      }
-
-      // account
       if (accounts.length === 0) {
         this.currentAccount = null;
         this.setAccount(null);
@@ -101,69 +82,67 @@ export default {
         );
         return;
       }
-      if (chainID !== newChainId) {
-        this.currentAccount = null;
-        this.setAccount(null);
-        throw new UnsupportedChainIdError();
-      }
+			if (accounts[0] !== this.currentAccount) {
+				this.currentAccount = accounts[0];
+				this.setAccount(accounts[0]);
+			}
+    },
+		async handleAccount(accounts) {
+			// account
+			if (accounts.length === 0) {
+				console.warn( "MetaMask is locked or the user has not connected any accounts");
+				return;
+			}
+			const c = chains.find((v) => v.chainID === CHAIN_ID);
+			this.setChainConfig(JSON.parse(JSON.stringify(c)));
+			this.currentAccount = accounts[0];
+			this.setAccount(accounts[0]);
+		},
+		async login() {
+			try {
+				await window.ethereum.request({
+					method: 'eth_requestAccounts',
+				});
 
-      if (accounts[0] !== this.currentAccount) {
-        this.currentAccount = accounts[0];
-        this.setAccount(accounts[0]);
-      }
-    },
-    async login() {
-      window.ethereum
-          .request({ method: "eth_requestAccounts" })
-          .then(this.handleAccountsChanged)
-          .catch(async (error) => {
-            if (error.code === 4001) {
-              this.$message.error('User rejected');
-            } else if (error instanceof UnsupportedChainIdError) {
-              const hasSetup = await this.setupNetwork();
-              if (hasSetup) {
-                await this.login();
-              }
-            } else {
-              this.$message.error('Connect Error');
-            }
-          });
-    },
-    async setupNetwork() {
-      const provider = window.ethereum;
-      if (provider) {
-        try {
-          await provider.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: chainID,
-                chainName: 'QuarkChain L2 Testnet',
-                nativeCurrency: {
-                  name: 'QKC',
-                  symbol: 'QKC',
-                  decimals: 18,
-                },
-                rpcUrls: nodes,
-                blockExplorerUrls: explorers,
-              },
-            ],
-          })
-          const newChainId = await window.ethereum.request({method: "eth_chainId"});
-          if (chainID !== newChainId) {
-            this.$message.error('User rejected');
-            return false;
-          }
-          return true;
-        } catch (error) {
-          this.$message.error('Failed to setup the network in Metamask');
-          return false
-        }
-      } else {
-        this.$message.error('Can\'t setup the QuarkChain L2 Testnet on metamask because window.ethereum is undefined');
-        return false
-      }
-    },
+				// check
+				const chainId = await window.ethereum.request({
+					method: 'eth_chainId',
+				});
+				if (chainId !== CHAIN_ID) {
+					const success = await this.switchNetwork();
+					if (!success) return;
+				}
+
+				const accounts = await window.ethereum.request({
+					method: 'eth_accounts',
+				});
+				await this.handleAccount(accounts);
+			} catch (error) {
+				if (error.code === 4001) {
+					this.$message.error('User rejected');
+				} else {
+					this.$message.error('Connect Error');
+					console.error(error);
+				}
+			}
+		},
+		async switchNetwork() {
+			try {
+				await window.ethereum.request({
+					method: 'wallet_switchEthereumChain',
+					params: [{ chainId: CHAIN_ID }],
+				});
+				return true;
+			} catch (error) {
+				if (error.code === 4001) {
+					this.$message.error(`Please switch to Sepolia network`);
+				} else {
+					this.$message.error('Failed to switch network');
+					console.error(error);
+				}
+				return false;
+			}
+		},
     goProfile(){
       this.$router.push({path: "/address/" + this.currentAccount});
     }

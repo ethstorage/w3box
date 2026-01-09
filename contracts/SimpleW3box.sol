@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -21,7 +21,7 @@ interface IERC5018 {
     }
 
     // Large storage methods
-    function write(bytes memory name, bytes memory data) external payable;
+    function write(bytes memory name, bytes memory data) external;
 
     function read(bytes memory name) external view returns (bytes memory, bool);
 
@@ -33,15 +33,16 @@ interface IERC5018 {
     function countChunks(bytes memory name) external view returns (uint256);
 
     // Chunk-based large storage methods
-    function writeChunk(
-        bytes memory name,
-        uint256 chunkId,
-        bytes memory data
-    ) external payable;
+    function writeChunkByCalldata(bytes memory name, uint256 chunkId, bytes memory data) external;
 
-    function writeChunks(bytes memory name, uint256[] memory chunkIds, uint256[] memory sizes) external payable;
+    function writeChunksByBlobs(bytes memory name, uint256[] memory chunkIds, uint256[] memory sizes) external payable;
 
     function readChunk(bytes memory name, uint256 chunkId) external view returns (bytes memory, bool);
+
+    function readChunksPaged(bytes memory name, uint256 startChunkId, uint256 limit)
+        external
+        view
+        returns (bytes[] memory chunks);
 
     function chunkSize(bytes memory name, uint256 chunkId) external view returns (uint256, bool);
 
@@ -49,17 +50,16 @@ interface IERC5018 {
 
     function truncate(bytes memory name, uint256 chunkId) external returns (uint256);
 
-    function refund() external;
-
-    function destruct() external;
-
     function getChunkHash(bytes memory name, uint256 chunkId) external view returns (bytes32);
 
     function getChunkHashesBatch(FileChunk[] memory fileChunks) external view returns (bytes32[] memory);
 
     function getChunkCountsBatch(bytes[] memory names) external view returns (uint256[] memory);
 
-    function getUploadInfo(bytes memory name) external view returns (StorageMode mode, uint256 chunkCount, uint256 storageCost);
+    function getUploadInfo(bytes memory name)
+        external
+        view
+        returns (StorageMode mode, uint256 chunkCount, uint256 storageCost);
 }
 
 contract SimpleW3box {
@@ -104,8 +104,7 @@ contract SimpleW3box {
         fileFD = IERC5018(factory.create());
     }
 
-    receive() external payable {
-    }
+    receive() external payable {}
 
     function setChainId(string calldata _chainId) public isOwner {
         chainId = _chainId;
@@ -115,7 +114,7 @@ contract SimpleW3box {
         writeChunk(name, fileType, 0, data);
     }
 
-    function writeChunk(bytes memory name, bytes memory fileType, uint256 chunkId, bytes calldata data) public payable {
+    function writeChunk(bytes memory name, bytes memory fileType, uint256 chunkId, bytes calldata data) public {
         bytes32 nameHash = keccak256(name);
         FilesInfo storage info = fileInfos[msg.sender];
         if (info.fileIds[nameHash] == 0) {
@@ -124,7 +123,7 @@ contract SimpleW3box {
             info.fileIds[nameHash] = info.files.length;
         }
 
-        fileFD.writeChunk{value: msg.value}(getNewName(msg.sender, name), chunkId, data);
+        fileFD.writeChunkByCalldata(getNewName(msg.sender, name), chunkId, data);
     }
 
     function removes(bytes[] memory names) public {
@@ -149,8 +148,6 @@ contract SimpleW3box {
         delete info.fileIds[nameHash];
 
         uint256 id = fileFD.remove(getNewName(msg.sender, name));
-        fileFD.refund();
-        payable(msg.sender).transfer(address(this).balance);
         return id;
     }
 
@@ -163,33 +160,27 @@ contract SimpleW3box {
     }
 
     function getNewName(address author, bytes memory name) public pure returns (bytes memory) {
-        return abi.encodePacked(
-            Strings.toHexString(uint256(uint160(author)), 20),
-            '/',
-            name
-        );
+        return abi.encodePacked(Strings.toHexString(uint256(uint160(author)), 20), "/", name);
     }
 
     function getUrl(bytes memory name) public view returns (string memory) {
         // https://0xf208000076869ca535575baddd9152ac0a05986c.3333.w3link.io/app.html
-        return string(abi.encodePacked(
-                'https://',
+        return string(
+            abi.encodePacked(
+                "https://",
                 Strings.toHexString(uint256(uint160(address(fileFD))), 20),
                 ".",
                 chainId,
-                '.w3link.io/',
+                ".w3link.io/",
                 name
-            ));
+            )
+        );
     }
 
     function getAuthorFiles(address author)
-        public view
-        returns (
-            uint256[] memory times,
-            bytes[] memory names,
-            bytes[] memory types,
-            string[] memory urls
-        )
+        public
+        view
+        returns (uint256[] memory times, bytes[] memory names, bytes[] memory types, string[] memory urls)
     {
         uint256 length = fileInfos[author].files.length;
         times = new uint256[](length);

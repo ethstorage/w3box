@@ -1,5 +1,5 @@
 export const chains = [{
-  chainID: '0xd07',
-  FileBoxController:'0x6b24c17f47aaac711d1a0d8A2ED49fafB414Caca',
-  FlatDirectory: '0x93110Da46fEDaB471A1762D8aC1d5F080B033E6A',
+  chainID: '0xaa36a7',
+  FileBoxController:'0x7B8E8586a8e8bE3a79eB21Ff5b1ea4BFc4ff4a66',
+  FlatDirectory: '0x6f81c2c069ece8e843420b842879ebbf35ae2508',
 }];
