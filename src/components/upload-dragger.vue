@@ -68,7 +68,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import '../assets/styles/vars.scss';
+@use '../assets/styles/vars.scss' as *;
 .go-upload-dragger {
   border: 1px dashed $gray400;
   height: 180px;

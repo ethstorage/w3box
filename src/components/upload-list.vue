@@ -70,8 +70,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../assets/styles/mixins.scss";
-@import "../assets/styles/vars.scss";
+@use "../assets/styles/mixins.scss" as *;
+@use "../assets/styles/vars.scss" as *;
 .go-upload-list {
   .go-upload-list-item {
     margin-top: 8px;

@@ -35,7 +35,7 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../assets/styles/vars.scss";
+@use '../assets/styles/vars.scss' as *;
 .group{
   display: flex;
   flex-direction: row;
