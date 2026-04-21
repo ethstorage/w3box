@@ -14,11 +14,11 @@
     "element-ui": "^2.15.14",
     "ethers": "^6.11.1",
     "js-sha3": "^0.8.0",
-    "sass": "^1.72.0",
-    "sass-loader": "^9.0.3",
-    "vue": "^2.6.14",
+    "sass": "^1.77.0",
+    "sass-loader": "^10.5.2",
+    "vue": "^2.7.16",
     "vue-async-computed": "^3.9.0",
-    "vue-router": "^3.5.3",
+    "vue-router": "^3.6.5",
     "vuex": "^3.6.2"
   },
   "devDependencies": {
@@ -27,8 +27,10 @@
     "@vue/cli-service": "~5.0.8",
     "babel-eslint": "^10.1.0",
     "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.7.1",
-    "vue-template-compiler": "^2.6.14"
+    "eslint-plugin-vue": "^8.7.1"
+  },
+  "resolutions": {
+    "serialize-javascript": "^7.0.5"
   },
   "eslintConfig": {
     "root": true,
